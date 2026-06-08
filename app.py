@@ -11,9 +11,11 @@ def get_case_laws(issue, api_key):
         from groq import Groq
         client = Groq(api_key=api_key)
 
-        prompt = f"""You are an expert Indian Income Tax lawyer. A tax professional needs case laws on this income tax issue:
+        prompt = f"""You are a Senior Indian Income Tax Advocate with 30 years of litigation experience before the Supreme Court, all High Courts, and ITAT. An Assessing Officer needs comprehensive, analytically detailed case laws to use in an assessment order on this issue:
 
 ISSUE: {issue}
+
+Your output will be directly used in a formal Income Tax assessment order. Therefore each case must be explained with full legal analysis — not a summary. Include the exact legal reasoning, the specific provisions of the Income Tax Act involved, and how the ratio of the case applies to the issue.
 
 Respond ONLY in the exact format below. No bold (**), no numbering (1.), no bullet points (-).
 Each field must start at the beginning of a new line exactly as shown.
@@ -23,16 +25,24 @@ Each field must start at the beginning of a new line exactly as shown.
 Case Name: [Full case name e.g. CIT v. ABC Ltd.]
 Citation: [Full citation e.g. (2015) 370 ITR 200 (SC)]
 Court: Supreme Court of India
-Year: [e.g. 2015]
-Favour: [Write exactly "Revenue" if the judgment favours the Income Tax Department/Revenue, or "Assessee" if it favours the taxpayer/assessee]
-Key Ruling: [2-3 sentences explaining what was decided and why it is relevant]
+Year: [year]
+Favour: [Write exactly "Revenue" or "Assessee" only]
+Sections Involved: [List all relevant sections of the Income Tax Act 1961 e.g. Section 68, Section 147, Section 271(1)(c)]
+Legal Issue: [In one sentence, state the precise legal question that was before the court]
+Facts: [2-3 sentences describing the key facts of the case — what the assessee did, what the AO did, what happened in appeals]
+Held: [3-5 sentences of the exact ratio decidendi — what legal principle the court laid down, the reasoning behind it, and which earlier cases or statutory provisions it relied upon]
+Applicability: [2-3 sentences explaining exactly how this ruling should be applied by an Assessing Officer when dealing with the issue described above — what it supports, what it prohibits, how to cite it in an order]
 
 Case Name: [next case]
 Citation: [citation]
 Court: Supreme Court of India
 Year: [year]
 Favour: [Revenue or Assessee]
-Key Ruling: [ruling]
+Sections Involved: [sections]
+Legal Issue: [issue]
+Facts: [facts]
+Held: [held]
+Applicability: [applicability]
 
 ==HIGH COURT CASES==
 
@@ -41,7 +51,11 @@ Citation: [Full citation]
 Court: [Specific High Court e.g. Delhi High Court, Bombay High Court, Madras High Court]
 Year: [year]
 Favour: [Revenue or Assessee]
-Key Ruling: [ruling]
+Sections Involved: [sections]
+Legal Issue: [issue]
+Facts: [facts]
+Held: [held]
+Applicability: [applicability]
 
 ==ITAT CASES==
 
@@ -50,7 +64,11 @@ Citation: [Full citation]
 Court: [Specific ITAT bench e.g. ITAT Delhi, ITAT Mumbai, ITAT Chennai]
 Year: [year]
 Favour: [Revenue or Assessee]
-Key Ruling: [ruling]
+Sections Involved: [sections]
+Legal Issue: [issue]
+Facts: [facts]
+Held: [held]
+Applicability: [applicability]
 
 Rules:
 - Provide as many cases as possible — there is NO upper limit. List every relevant case you know. Aim for maximum coverage, up to 200 cases total across all sections.
@@ -59,6 +77,9 @@ Rules:
 - For ITAT cases: include cases from as many different ITAT benches (states) as possible
 - Do NOT stop early. Keep listing cases until you have exhausted all known relevant cases on this issue.
 - Only cite real cases that actually exist in Indian tax law
+- Every field — especially Held and Applicability — must be detailed, analytical, and legally precise. Do NOT write vague summaries.
+- The Held field must contain the actual ratio decidendi with legal reasoning, not just the outcome.
+- The Applicability field must explain how an Assessing Officer should use this case in an assessment order.
 - Do not use bold (**), numbering (1.), or bullet points (-)
 - Each field label must start at the beginning of the line
 - Favour field must be exactly the word "Revenue" or "Assessee" only"""
@@ -68,7 +89,7 @@ Rules:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert Indian Income Tax lawyer. Output only the exact format requested. Never use markdown. Always include the Favour field as exactly 'Revenue' or 'Assessee'. List every relevant case you know — do not stop early, do not summarise, do not truncate. Maximum coverage is the goal."
+                    "content": "You are a Senior Indian Income Tax Advocate with 30 years of litigation experience. Output only the exact format requested. Never use markdown bold or bullets. Always include Favour as exactly 'Revenue' or 'Assessee'. For every case provide full legal analysis in the Held and Applicability fields — ratio decidendi, statutory provisions, and how an Assessing Officer should use the case. List every relevant case you know — do not stop early, do not summarise, do not truncate."
                 },
                 {
                     "role": "user",
@@ -109,7 +130,7 @@ def parse_cases(text):
     last_field = None
 
     field_pattern = re.compile(
-        r'^(?:[-*•\d.]*\s*)?(Case Name|Citation|Court|Year|Favour|Key Ruling)\s*:\s*(.*)',
+        r'^(?:[-*•\d.]*\s*)?(Case Name|Citation|Court|Year|Favour|Sections Involved|Legal Issue|Facts|Held|Applicability|Key Ruling)\s*:\s*(.*)',
         re.IGNORECASE
     )
 
@@ -176,10 +197,31 @@ def parse_cases(text):
             elif field_key == "key_ruling":
                 current_case["ruling"] = field_val
                 last_field = "ruling"
+
+            elif field_key == "sections_involved":
+                current_case["sections"] = field_val
+                last_field = "sections"
+
+            elif field_key == "legal_issue":
+                current_case["legal_issue"] = field_val
+                last_field = "legal_issue"
+
+            elif field_key == "facts":
+                current_case["facts"] = field_val
+                last_field = "facts"
+
+            elif field_key == "held":
+                current_case["held"] = field_val
+                last_field = "held"
+
+            elif field_key == "applicability":
+                current_case["applicability"] = field_val
+                last_field = "applicability"
+
         else:
-            # Continuation of multi-line ruling
-            if last_field == "ruling" and stripped and not stripped.startswith("=="):
-                current_case["ruling"] = current_case.get("ruling", "") + " " + stripped
+            # Continuation of multi-line fields
+            if last_field in ("ruling", "facts", "held", "applicability", "legal_issue") and stripped and not stripped.startswith("=="):
+                current_case[last_field] = current_case.get(last_field, "") + " " + stripped
 
     # Save last case
     if current_case and "name" in current_case and current_section:
@@ -253,3 +295,4 @@ if __name__ == "__main__":
     print("  Press Ctrl+C to stop the server")
     print("="*60 + "\n")
     app.run(debug=False, host="0.0.0.0", port=port)
+
