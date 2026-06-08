@@ -53,10 +53,11 @@ Favour: [Revenue or Assessee]
 Key Ruling: [ruling]
 
 Rules:
-- Provide as many cases as possible — aim for at least 8 to 10 cases per section (Supreme Court, High Court, ITAT)
+- Provide as many cases as possible — there is NO upper limit. List every relevant case you know. Aim for maximum coverage, up to 200 cases total across all sections.
 - Include a good mix: roughly half Revenue and half Assessee favour in each section
 - For High Court cases: include cases from as many different High Courts (states) as possible
 - For ITAT cases: include cases from as many different ITAT benches (states) as possible
+- Do NOT stop early. Keep listing cases until you have exhausted all known relevant cases on this issue.
 - Only cite real cases that actually exist in Indian tax law
 - Do not use bold (**), numbering (1.), or bullet points (-)
 - Each field label must start at the beginning of the line
@@ -67,7 +68,7 @@ Rules:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert Indian Income Tax lawyer. Output only the exact format requested. Never use markdown. Always include the Favour field as exactly 'Revenue' or 'Assessee'."
+                    "content": "You are an expert Indian Income Tax lawyer. Output only the exact format requested. Never use markdown. Always include the Favour field as exactly 'Revenue' or 'Assessee'. List every relevant case you know — do not stop early, do not summarise, do not truncate. Maximum coverage is the goal."
                 },
                 {
                     "role": "user",
@@ -75,7 +76,7 @@ Rules:
                 }
             ],
             temperature=0.2,
-            max_tokens=8000
+            max_tokens=32000
         )
 
         raw_text = response.choices[0].message.content
